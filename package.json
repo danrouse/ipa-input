@@ -1,0 +1,35 @@
+{
+  "name": "ipa-input",
+  "version": "1.0.0",
+  "description": "Mobile-friendly IPA (International Phonetic Alphabet) input method",
+  "main": "ipa-input.js",
+  "scripts": {
+    "test": "gulp test"
+  },
+  "keywords": [
+    "input",
+    "ipa",
+    "phonetic",
+    "linguistics",
+    "handwriting",
+    "ocr",
+    "knn",
+    "knearest"
+  ],
+  "author": "Dan Rouse <dan@rouse.house>",
+  "license": "MIT",
+  "devDependencies": {
+    "browser-sync": "^2.7.6",
+    "gulp": "^3.9.0",
+    "gulp-eslint": "^0.12.0",
+    "gulp-load-plugins": "^0.10.0",
+    "gulp-plumber": "^1.0.1",
+    "gulp-ruby-sass": "^1.0.5",
+    "gulp-sourcemaps": "^1.5.2",
+    "gulp-uglify": "^1.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kremonte/ipa-input"
+  }
+}

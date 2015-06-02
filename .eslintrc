@@ -1,0 +1,10 @@
+{
+	"env": {
+		"browser": true
+	},
+	"rules": {
+		"quotes": [1, "single"],
+		"no-console": 0,
+		"no-trailing-spaces": 0
+	}
+}
