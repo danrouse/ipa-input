@@ -11,7 +11,6 @@ var ipa = ipa || {};
 	
 	// internal state
 	var lastX, lastY;
-	var minX, minY, maxX, maxY;
 
 	// buffer event processing
 	var frameBuffer = [];
@@ -20,7 +19,7 @@ var ipa = ipa || {};
 			frameBuffer.push([fn, event]);
 		};
 	}
-	function frame(dt) {
+	function frame() {
 		for(var i in frameBuffer) {
 			frameBuffer[i][0](frameBuffer[i][1]);
 			delete frameBuffer[i];
@@ -58,7 +57,7 @@ var ipa = ipa || {};
 		var sy = (y1 < y2) ? 1 : -1;
 		var err = dx - dy;
 		ctx.fillRect(x - (lineWidth / 2), y - (lineWidth / 2), lineWidth, lineWidth);
-		while(!(x1 == x2 && y1 == y2)) {
+		while(!(x1 === x2 && y1 === y2)) {
 			var e2 = err << 1;
 			if(e2 > -dy) {
 				err -= dy;
@@ -73,19 +72,26 @@ var ipa = ipa || {};
 		lastX = x;
 		lastY = y;
 
-		if(!minX || x < minX) { minX = x; }
-		if(!maxX || x > maxX) { maxX = x; }
-		if(!minY || y < minY) { minY = y; }
-		if(!maxY || y > maxY) { maxY = y; }
-
 		event.stopPropagation();
 		event.preventDefault();
 	}
 	var bufferTouchmove = buffer(ipaTouchmove);
 
+	function ipaTouchend(event) {
+		window.removeEventListener('touch', bufferTouchmove);
+		window.removeEventListener('mousemove', bufferTouchmove);
+		window.removeEventListener('touchend', ipaTouchend);
+		window.removeEventListener('mouseup', ipaTouchend);
+		event.stopPropagation();
+		event.preventDefault();
+	}
 	function ipaTouchstart(event) {
 		lastX = event.layerX || event.offsetX;
 		lastY = event.layerY || event.offsetY;
+		if(!lastX && !lastY) {
+			lastX = event.touches[0].clientX;
+			lastY = event.touches[0].clientY;
+		}
 
 		if(event.target === canvas) {
 			window.addEventListener('touchmove', bufferTouchmove);
@@ -97,128 +103,204 @@ var ipa = ipa || {};
 			event.preventDefault();
 		}
 	}
-	function ipaTouchend(event) {
-		window.removeEventListener('touch', bufferTouchmove);
-		window.removeEventListener('mousemove', bufferTouchmove);
-		window.removeEventListener('touchend', ipaTouchend);
-		window.removeEventListener('mouseup', ipaTouchend);
-		event.stopPropagation();
-		event.preventDefault();
-	}
-
 	canvas.addEventListener('touchstart', ipaTouchstart);
 	canvas.addEventListener('mousedown', ipaTouchstart);
 	
-	
-
 	function resetCanvas() {
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
-		minX = maxX = minY = maxY = 0;
 	}
 	
 	// Image processing
-	function processImage() {
+	function generateSample() {
+		//ctx.rotate((Math.random() - 0.5) * 0.25);
 		var src = ctx.getImageData(0, 0, canvas.width, canvas.height);
 		var dst = document.createElement('canvas');
 		dst.width = dst.height = tplSize;
 		var dstCtx = dst.getContext('2d');
 
+		var x1, x2, y1, y2;
+		for(var y = 0; y < src.height; ++y) {
+			for(var x = 0; x < src.width; ++x) {
+				var idx = (y * src.width + x) * 4;
+				var px = src.data[idx + 3];
+				if(px) {
+					if(!x1 || x < x1) { x1 = x; }
+					if(!x2 || x > x2) { x2 = x; }
+					if(!y1 || y < y1) { y1 = y; }
+					if(!y2 || y > y2) { y2 = y; }
+				}
+			}
+		}
+
+		if(typeof x1 === 'undefined') {
+			return false;
+		}
+
 		// crop and resize
-		dstCtx.drawImage(canvas, minX, minY, maxX - minX, maxY - minY, 0, 0, tplSize, tplSize);
-		
-		return dstCtx.getImageData(0, 0, tplSize, tplSize);
-	}
+		dstCtx.drawImage(canvas, x1, y1, x2 - x1, y2 - y1, 0, 0, tplSize, tplSize);
+		var im = dstCtx.getImageData(0, 0, tplSize, tplSize);
 
-	// Training
-	var curGlyph = 0;
-	var training = {
-		samples: [],
-		responses: []
-	};
-	function train(next, save) {
-		if(next < 0 || next > global.glyphs.length) {
-			next = curGlyph;
-		}
-
-		// save current glyph
-		var addedGlyph;
-		if((minX !== maxX || minY !== maxY) && save) {
-			var im = processImage();
+		if(im) {
 			var imData = [];
-			for(var px = 0; px < im.data.length; px += 4) {
-				imData.push(im.data[px + 3] > 0 ? 1 : 0);
+			var numBlack = 0;
+			for(var i = 0; i < im.data.length; i += 4) {
+				imData.push(im.data[i + 3] > 0 ? 1 : 0);
+				numBlack += (im.data[i + 3] > 0 ? 1 : 0);
 			}
 
-			training.samples.push(imData);
-			training.responses.push(curGlyph);
-
-			var dst = document.createElement('canvas');
-			dst.width = dst.height = tplSize;
-			dst.dataset.i = training.samples.length - 1;
-			var dstCtx = dst.getContext('2d');
-			dstCtx.putImageData(im, 0, 0);
-			dst.addEventListener('click', function() {
-				training.samples.splice(this.dataset.i, 1);
-				training.responses.splice(this.dataset.i, 1);
-				this.parentNode.removeChild(this);
-			});
-
-			if(curGlyph === next) {
-				document.getElementById('training-glyph-samples').appendChild(dst);
-			}
-			global.glyphs[curGlyph].samples.push(dst);
-		}
-
-		if(curGlyph !== next) {
-			document.getElementById('training-glyph-samples').innerHTML = '';
-			for(var g in global.glyphs[next].samples) {
-				document.getElementById('training-glyph-samples').appendChild(global.glyphs[next].samples[g]);
+			if(numBlack > 0 && numBlack < imData.length) {
+				return { data: imData, canvas: dst };
 			}
 		}
 
-		document.getElementById('training-glyph').innerHTML = global.glyphs[next].glyph;
-		document.getElementById('training-desc').innerHTML = global.glyphs[next].name;
-		var lenStr = training.samples.length + ' samples, ' + Math.round(JSON.stringify(training).length / 1024, 2) + 'kB';
-		document.getElementById('training-json-len').innerHTML = lenStr;
-
-		curGlyph = next;
-		resetCanvas();
+		return false;
 	}
 
-	function undoTraining() {
-		training.samples.pop();
-		training.responses.pop();
-		train(curGlyph);
-	}
+	function initTrainingUI() {
+		function createElem(tag, id, className, root) {
+			var elem = document.createElement(tag);
+			elem.id = id;
+			elem.className = className || id;
 
-	function saveTraining() {
-		var json = JSON.stringify(training);
-		var link = document.createElement('a');
-		link.href = 'data:text/plain;charset=utf-8,' + window.encodeURIComponent(json);
-		link.download = 'ipa-training.json';
-		link.click();
-	}
+			root = root || document.body;
+			root.appendChild(elem);
+			return elem;
+		}
+		var elemContainer = createElem('div', 'training');
+		var elemGlyphContainer = createElem('div', null, 'training-glyph', elemContainer);
+		var elemGlyph = createElem('h1', 'training-glyph', 'training-glyph-cur', elemGlyphContainer);
+		var elemSamples = createElem('div', 'training-glyph-samples', false, elemGlyphContainer);
+		var elemDesc = createElem('h2', 'training-desc', false, elemContainer);
+		var elemButtons = createElem('div', 'training-buttons', false, elemContainer);
+		var elemLen = createElem('p', 'training-json-len', false, elemContainer);		
 
-	function createButton(text, listener) {
-		var btn = document.createElement('button');
-		btn.innerText = text;
-		btn.addEventListener('click', listener);
-		return document.getElementById('training-buttons').appendChild(btn);
+		var curGlyph = 0;
+		var training = {
+			samples: [],
+			responses: []
+		};
+
+		function train(next, save) {
+			if(next < 0 || next >= global.glyphs.length) {
+				next = curGlyph;
+			}
+
+			// save current glyph
+			if(save) {
+				var sample = generateSample();
+
+				if(sample) {
+					var matches = false;
+					for(var i = 0; i < training.samples.length - 1; i++) {
+						var sampleStr = JSON.stringify(training.samples[i]);
+						if(sampleStr === JSON.stringify(sample.data)) {
+							matches = true;
+							break;
+						}
+					}
+
+					if(!matches) {
+						training.samples.push(sample.data);
+						training.responses.push(curGlyph);
+
+						sample.canvas.dataset.i = training.samples.length - 1;
+						sample.canvas.addEventListener('click', function() {
+							training.samples.splice(this.dataset.i, 1);
+							training.responses.splice(this.dataset.i, 1);
+							this.parentNode.removeChild(this);
+						});
+						global.glyphs[curGlyph].samples.push(sample.canvas);
+						
+						if(curGlyph === next) {
+							elemSamples.appendChild(sample.canvas);
+						}
+					}
+				}
+			} else if(curGlyph !== next) {
+				elemSamples.innerHTML = '';
+				for(var g in global.glyphs[next].samples) {
+					elemSamples.appendChild(global.glyphs[next].samples[g]);
+				}
+			}
+
+			elemGlyph.innerHTML = global.glyphs[next].glyph;
+			elemDesc.innerHTML = global.glyphs[next].name;
+			var lenStr = training.samples.length + ' samples, ' + Math.round(JSON.stringify(training).length / 1024, 2) + 'kB';
+			elemLen.innerHTML = lenStr;
+
+			curGlyph = next;
+			resetCanvas();
+		}
+
+		function undoTraining() {
+			training.samples.pop();
+			training.responses.pop();
+			train(curGlyph);
+		}
+
+		function saveTraining() {
+			var json = JSON.stringify(training);
+			var link = document.createElement('a');
+			link.href = 'data:text/plain;charset=utf-8,' + window.encodeURIComponent(json);
+			link.download = 'ipa-training.json';
+			link.click();
+		}
+
+		function trainFromFont(font, size) {
+			var oldGlyph = curGlyph;
+			for(var i = 0; i < global.glyphs.length; i++) {
+				curGlyph = i;
+				var glyph = global.glyphs[i].glyph;
+				var glyphSize = ctx.measureText(glyph);
+
+				size = (size || 100) + 'px';
+				ctx.font = size + ' ' + font;
+				ctx.fillText(glyph, (canvas.width / 2) - (glyphSize.width / 2), canvas.height / 2 + 50);
+				//ctx.rotate((Math.random() - 0.5) * Math.PI);
+				train(i + 1, true);
+			}
+			train(oldGlyph);
+		}
+
+		function createButton(text, listener) {
+			var btn = document.createElement('button');
+			btn.innerText = text;
+			btn.addEventListener('click', listener);
+			return elemButtons.appendChild(btn);
+		}
+		
+		createButton('\ud83d\uddc1', function() {
+			var font = window.prompt('Please enter a font name:', 'Charis SIL');
+			if(font) { trainFromFont(font); }
+		});
+		createButton('\ud83d\uddf9', function() { train(curGlyph + 1, true); });
+		createButton('\u2190', function() { train(curGlyph - 1); });
+		createButton('\u2192', function() { train(curGlyph + 1); });		
+		createButton('\u20e0', resetCanvas);
+		createButton('\u293a', undoTraining);
+		createButton('\ud83d\udcbe', saveTraining);
+
+		train(0);
+
+		return {
+			train: train,
+			trainFromFont: trainFromFont
+		};
 	}
-	
-	createButton('Previous', function() { train(curGlyph - 1); });
-	createButton('Repeat', function() { train(curGlyph, true); });
-	createButton('Continue', function() { train(curGlyph + 1, true); });
-	createButton('Skip', function() { train(curGlyph + 1); });
-	createButton('Reset', resetCanvas);
-	createButton('Undo', undoTraining);
-	createButton('Export', saveTraining);
 
 	// initialize state
 	canvas.className = 'ipa-input';
 	document.body.appendChild(canvas);
 	resizeCanvas();
-	train(0);
+
+	global.initTrainingUI = initTrainingUI;
+
+	// var t = initTrainingUI();
+	// t.trainFromFont('Charis SIL');
+	// t.trainFromFont('Andika');
+	// t.trainFromFont('Gentium Plus');
+	// t.trainFromFont('Daniel');
+	// t.trainFromFont('Comic Sans MS');
 })(ipa);
 
 (function(lib) {
@@ -229,3 +311,5 @@ var ipa = ipa || {};
 		module.exports = lib;
 	}
 })(ipa);
+
+ipa.initTrainingUI();

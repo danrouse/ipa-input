@@ -83,6 +83,7 @@ canvas {
 			transition: background-color 0.1s ease-out;
 			border-top: 1px solid lighten(thistle, 15%);
 			border-bottom: 1px solid darken(thistle, 15%);
+			font-size: 200%;
 			
 			&:hover {
 				cursor: pointer;
