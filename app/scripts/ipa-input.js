@@ -47,11 +47,28 @@ var ipa = ipa || {};
 			y = event.touches[0].clientY;
 		}
 
-		ctx.beginPath();
-		ctx.moveTo(lastX, lastY);
-		ctx.lineTo(x, y);
-		ctx.closePath();
-		ctx.stroke();
+		// bresenham's line drawing algorithm
+		var x1 = x;
+		var y1 = y;
+		var x2 = lastX || 0;
+		var y2 = lastY || 0;
+		var dx = Math.abs(x1 - x2);
+		var dy = Math.abs(y1 - y2);
+		var sx = (x1 < x2) ? 1 : -1;
+		var sy = (y1 < y2) ? 1 : -1;
+		var err = dx - dy;
+		ctx.fillRect(x - (lineWidth / 2), y - (lineWidth / 2), lineWidth, lineWidth);
+		while(!(x1 == x2 && y1 == y2)) {
+			var e2 = err << 1;
+			if(e2 > -dy) {
+				err -= dy;
+				x1 += sx;
+			} else if(e2 < dx) {
+				err += dx;
+				y1 += sy;
+			}
+			ctx.fillRect(x1 - (lineWidth / 2), y1 - (lineWidth / 2), lineWidth, lineWidth);
+		}
 		
 		lastX = x;
 		lastY = y;
@@ -60,6 +77,7 @@ var ipa = ipa || {};
 		if(!maxX || x > maxX) { maxX = x; }
 		if(!minY || y < minY) { minY = y; }
 		if(!maxY || y > maxY) { maxY = y; }
+
 		event.stopPropagation();
 		event.preventDefault();
 	}
@@ -69,13 +87,21 @@ var ipa = ipa || {};
 		lastX = event.layerX || event.offsetX;
 		lastY = event.layerY || event.offsetY;
 
-		window.addEventListener('touchmove', bufferTouchmove);
-		window.addEventListener('mousemove', bufferTouchmove);
-		event.stopPropagation();
-		event.preventDefault();
+		if(event.target === canvas) {
+			window.addEventListener('touchmove', bufferTouchmove);
+			window.addEventListener('mousemove', bufferTouchmove);
+			window.addEventListener('touchend', ipaTouchend);
+			window.addEventListener('mouseup', ipaTouchend);
+
+			event.stopPropagation();
+			event.preventDefault();
+		}
 	}
 	function ipaTouchend(event) {
+		window.removeEventListener('touch', bufferTouchmove);
 		window.removeEventListener('mousemove', bufferTouchmove);
+		window.removeEventListener('touchend', ipaTouchend);
+		window.removeEventListener('mouseup', ipaTouchend);
 		event.stopPropagation();
 		event.preventDefault();
 	}
@@ -83,8 +109,7 @@ var ipa = ipa || {};
 	canvas.addEventListener('touchstart', ipaTouchstart);
 	canvas.addEventListener('mousedown', ipaTouchstart);
 	
-	window.addEventListener('touchend', ipaTouchend);
-	window.addEventListener('mouseup', ipaTouchend);
+	
 
 	function resetCanvas() {
 		ctx.clearRect(0, 0, canvas.width, canvas.height);

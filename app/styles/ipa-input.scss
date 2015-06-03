@@ -12,10 +12,16 @@ canvas {
 	//width: 50%;
 
 	background-color: white;
+
+	&.ipa-input {
+		position: absolute;
+		z-index: 1;
+	}
 }
 
 .training {
 	position: fixed;
+	z-index: 2;
 	top: 0;
 	text-align: center;
 	box-shadow: 0 0 5px black;
