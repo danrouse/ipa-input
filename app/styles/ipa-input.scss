@@ -1,12 +1,112 @@
 @import "reset";
 
 body {
-	background-color: rgba(black, 0.7);
+	font-family: Arial;
+	overflow: hidden;
 }
 
-.ipa-input {
-	position: absolute;
+$black: rgba(15, 0, 0, 0.5);
+
+canvas {
+	//position: absolute;
 	//width: 50%;
 
 	background-color: white;
 }
+
+.training {
+	position: fixed;
+	top: 0;
+	text-align: center;
+	box-shadow: 0 0 5px black;
+
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+
+	@media screen and (orientation: landscape) {
+		width: 25%;
+		min-height: 100%;
+	}
+	
+	.training-glyph {
+		position: relative;
+		z-index: 10;
+		display: flex;
+		flex-direction: row;
+		box-shadow: 0 2px 3px 0px $black;
+	}
+		.training-glyph-cur {
+			flex-grow: 1;
+			font-size: 3em;
+			padding: 24px 0 12px;
+		}
+		.training-glyph-list canvas:hover {
+			cursor: pointer;
+			background-color: firebrick;
+		}
+	.training-desc {
+		position: relative;
+		z-index: 5;
+		background-color: lemonchiffon;
+		padding: 0.5em;
+		font-weight: normal;
+		font-style: italic;
+		box-shadow: 0 2px 3px 0px $black;
+	}
+	
+	.training-buttons {
+		background-color: thistle;
+		display: flex;
+		flex-direction: row;
+		flex-grow: 1;
+		box-shadow: 0 2px 3px 0px $black;
+		position: relative;
+		z-index: 1;
+		@media screen and (orientation: landscape) {
+			flex-direction: column;
+			box-shadow: none;
+		}
+	}
+		button {
+			position: relative;
+			flex-grow: 1;
+			border: none;
+			padding: 12px 0;
+			background-color: transparent;
+			transition: background-color 0.1s ease-out;
+			border-top: 1px solid lighten(thistle, 15%);
+			border-bottom: 1px solid darken(thistle, 15%);
+			
+			&:hover {
+				cursor: pointer;
+				background-color: chartreuse;
+				border-top-color: lighten(chartreuse, 15%);
+				border-bottom-color: darken(chartreuse, 15%);
+			}
+			&:active {
+				border-style: inset;
+				background-color: darken(chartreuse, 10%);
+				transition: none;
+			}
+		}
+	.training-json {
+		flex-grow: 1;
+	}
+	.training-json-len {
+		background-color: white;
+		text-align: right;
+		font-size: 80%;
+		padding: 8px;
+
+		@media screen and (orientation: landscape) {
+			box-shadow: 0 -5px 3px -3px black;
+		}
+	}
+}
+
+.process {
+	position: fixed;
+	bottom: 0;
+}
+

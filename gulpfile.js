@@ -25,14 +25,18 @@ gulp.task('styles', function() {
 		.pipe($.sourcemaps.write('./', {
 			includeContent: false,
 			sourceRoot: '/app/styles'
-			}))
+		}))
 		.pipe(gulp.dest('dist/styles'));
 });
 
 gulp.task('scripts', function() {
 	return gulp.src('app/scripts/**/*.js')
+		.pipe($.sourcemaps.init())
 		.pipe($.eslint())
 		.pipe($.eslint.format())
+		//.pipe($.traceur())
+		.pipe($.concat('ipa-input.js'))
 		.pipe($.uglify())
-		.pipe(gulp.dest('dist/scripts'));
+		.pipe($.sourcemaps.write('./'))
+		.pipe(gulp.dest('dist'));
 });
