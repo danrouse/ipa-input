@@ -4,6 +4,9 @@ var ipa = ipa || {};
 
 	var canvas = document.createElement('canvas');
 	var ctx = canvas.getContext('2d');
+	var elemToolbar = document.createElement('div');
+	elemToolbar.id = 'toolbar';
+	document.body.appendChild(elemToolbar);
 
 	// configurable settings
 	var lineWidth = 10;
@@ -108,6 +111,14 @@ var ipa = ipa || {};
 	
 	function resetCanvas() {
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
+	}
+
+	function createButton(text, listener, parent) {
+		var btn = document.createElement('button');
+		btn.innerText = text;
+		btn.addEventListener('click', listener);
+		parent = parent || elemToolbar;
+		return parent.appendChild(btn);
 	}
 	
 	// Image processing
@@ -261,24 +272,17 @@ var ipa = ipa || {};
 			}
 			train(oldGlyph);
 		}
-
-		function createButton(text, listener) {
-			var btn = document.createElement('button');
-			btn.innerText = text;
-			btn.addEventListener('click', listener);
-			return elemButtons.appendChild(btn);
-		}
 		
 		createButton('\ud83d\uddc1', function() {
 			var font = window.prompt('Please enter a font name:', 'Charis SIL');
 			if(font) { trainFromFont(font); }
-		});
-		createButton('\ud83d\uddf9', function() { train(curGlyph + 1, true); });
-		createButton('\u2190', function() { train(curGlyph - 1); });
-		createButton('\u2192', function() { train(curGlyph + 1); });		
-		createButton('\u20e0', resetCanvas);
-		createButton('\u293a', undoTraining);
-		createButton('\ud83d\udcbe', saveTraining);
+		}, elemButtons);
+		createButton('\ud83d\uddf9', function() { train(curGlyph + 1, true); }, elemButtons);
+		createButton('\u2190', function() { train(curGlyph - 1); }, elemButtons);
+		createButton('\u2192', function() { train(curGlyph + 1); }, elemButtons);		
+		createButton('\u20e0', resetCanvas, elemButtons);
+		createButton('\u293a', undoTraining, elemButtons);
+		createButton('\ud83d\udcbe', saveTraining, elemButtons);
 
 		train(0);
 
@@ -286,6 +290,46 @@ var ipa = ipa || {};
 			train: train,
 			trainFromFont: trainFromFont
 		};
+	}
+
+	var machine = new kNear.kNear(tplSize);
+	function initKNN() {
+		var req = new XMLHttpRequest();
+		req.open('GET', './ipa-training.json', true);
+		req.onload = function() {
+			if(req.status >= 200 && req.status < 400) {
+				var data = JSON.parse(req.responseText);
+				for(var i = 0; i < data.samples.length; i++) {
+					machine.learn(data.samples[i], data.responses[i]);
+				}
+				console.log('Machine trained.');
+			}
+		};
+		req.send();
+	}
+	initKNN();
+
+	function identify() {
+		var sample = generateSample();
+		if(sample) {
+			var matches = machine.classify(sample.data);
+			console.log(matches.map(function(i) { return global.glyphs[i].glyph; }));
+		}
+	}
+	createButton('Identify', identify);
+	createButton('Reset', resetCanvas);
+
+	global.test = function(i) {
+		var glyph = global.glyphs[i].glyph;
+		ctx.font = '100px Arial';
+
+		var glyphSize = ctx.measureText(glyph);
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		ctx.fillText(glyph, (canvas.width / 2) - (glyphSize.width / 2), canvas.height / 2 + 50);
+		identify();
+	}
+	for(var i = 0; i < global.glyphs.length; i++) {
+		setTimeout('ipa.test(' + i + ')', i * 2000);
 	}
 
 	// initialize state
@@ -312,4 +356,4 @@ var ipa = ipa || {};
 	}
 })(ipa);
 
-ipa.initTrainingUI();
+//ipa.initTrainingUI();

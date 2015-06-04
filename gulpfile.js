@@ -30,7 +30,8 @@ gulp.task('styles', function() {
 });
 
 gulp.task('scripts', function() {
-	return gulp.src('app/scripts/**/*.js')
+	return gulp.src(['app/scripts/vendor/**/*.js',  'app/scripts/*.js'])
+		.pipe($.plumber())
 		.pipe($.sourcemaps.init())
 		.pipe($.eslint())
 		.pipe($.eslint.format())
