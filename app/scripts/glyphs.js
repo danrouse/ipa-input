@@ -2,10 +2,14 @@ var ipa = ipa || {};
 
 (function(global) {
 	'use strict';
+	var glyphIndex = {};
+	var curGlyph = 0;
+
 	var Glyph = function(glyph, name) {
 		this.glyph = glyph;
 		this.name = name || '';
 		this.samples = [];
+		glyphIndex[glyph] = curGlyph++;
 	};
 	var glyphs = [
 		new Glyph('a'), new Glyph('b'), new Glyph('c'), new Glyph('d'), new Glyph('e'), new Glyph('f'), new Glyph('g'), new Glyph('h'), new Glyph('i'), new Glyph('j'), new Glyph('k'), new Glyph('l'), new Glyph('m'), new Glyph('n'), new Glyph('o'), new Glyph('p'), new Glyph('q'), new Glyph('r'), new Glyph('s'), new Glyph('t'), new Glyph('u'), new Glyph('v'), new Glyph('w'), new Glyph('x'), new Glyph('y'), new Glyph('z'),
@@ -98,7 +102,10 @@ var ipa = ipa || {};
 		new Glyph('\u01C3', 'retroflex click')	// ǃ
 	];
 
-	global.glyphs = glyphs;
+	global.glyphs = {
+		index: glyphIndex,
+		symbols: glyphs
+	};
 })(ipa);
 
 (function(lib) {

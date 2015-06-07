@@ -1,6 +1,7 @@
 var gulp = require('gulp');
 var $ = require('gulp-load-plugins')();
 var browserSync = require('browser-sync').create();
+var del = require('del');
 
 gulp.task('default', ['watch']);
 
@@ -19,6 +20,17 @@ gulp.task('watch', ['scripts', 'styles'], function() {
 		]).on('change', browserSync.reload)
 });
 
+gulp.task('build', ['clean', 'scripts', 'styles', 'html']);
+
+gulp.task('clean', function(cb) {
+	del(['dist/**/*'], cb);
+});
+gulp.task('html', function() {
+	return gulp.src('app/*.html')
+		.pipe($.htmlmin())
+		.pipe(gulp.dest('dist'));
+});
+
 gulp.task('styles', function() {
 	return $.rubySass('app/styles', { sourcemap: true })
 		.pipe($.plumber())
@@ -30,7 +42,7 @@ gulp.task('styles', function() {
 });
 
 gulp.task('scripts', function() {
-	return gulp.src(['app/scripts/vendor/**/*.js',  'app/scripts/*.js'])
+	return gulp.src(['app/scripts/vendor/**/*.js',  'app/scripts/glyphs.js', 'app/scripts/*.js'])
 		.pipe($.plumber())
 		.pipe($.sourcemaps.init())
 		.pipe($.eslint())
